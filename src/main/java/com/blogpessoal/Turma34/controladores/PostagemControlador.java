@@ -30,26 +30,22 @@ public class PostagemControlador {
 	@GetMapping("/todas")
 	public ResponseEntity<List<Postagem>> pegarTodas() {
 		return ResponseEntity.ok(repositorio.findAll());
-
 	}
 
 	@GetMapping("/{id_postagem}")
 	public ResponseEntity<Postagem> pegarPorId(@PathVariable(value = "id_postagem") Long idPostagem) {
 		return repositorio.findById(idPostagem).map(resp -> ResponseEntity.ok(resp))
 				.orElse(ResponseEntity.noContent().build());
-
 	}
 
 	@PostMapping("/salvar")
 	public ResponseEntity<Postagem> salvar(@Valid @RequestBody Postagem novaPostagem) {
 		return ResponseEntity.status(201).body(repositorio.save(novaPostagem));
-
 	}
 
 	@PutMapping("/atualizar")
 	public ResponseEntity<Postagem> atualizar(@Valid @RequestBody Postagem novaPostagem) {
 		return ResponseEntity.status(201).body(repositorio.save(novaPostagem));
-
 	}
 
 	@DeleteMapping("/deletar/{id_postagem}")
