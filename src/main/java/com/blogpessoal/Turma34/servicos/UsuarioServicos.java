@@ -22,6 +22,21 @@ public class UsuarioServicos {
 	private @Autowired UsuarioRepositorio repositorio;
 
 	/**
+	 * Método estatico que recebe a senha do usuario o criptografa
+	 * 
+	 * @param senha
+	 * @return String da senha criptografada
+ 	 * @since 1.0
+	 * @author Turma34
+	 * 
+	 */
+	private static String encriptadorDeSenha(String senha) {
+		BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+		return encoder.encode(senha);
+
+	}
+
+	/**
 	 * Metodo utilizado para cadastrar usuário validando duplicidade de email no
 	 * banco
 	 * 
@@ -35,9 +50,7 @@ public class UsuarioServicos {
 		return repositorio.findByEmail(usuarioParaCadastrar.getEmail()).map(usuarioExistente -> {
 			return Optional.empty();
 		}).orElseGet(() -> {
-			BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-			String senhaCriptografada = encoder.encode(usuarioParaCadastrar.getSenha());
-			usuarioParaCadastrar.setSenha(senhaCriptografada);
+			usuarioParaCadastrar.setSenha(encriptadorDeSenha(usuarioParaCadastrar.getSenha()));
 			return Optional.ofNullable(repositorio.save(usuarioParaCadastrar));
 		});
 
@@ -49,17 +62,39 @@ public class UsuarioServicos {
 	 * @param usuarioParaAtualizar do tipo Usuario
 	 * @return Optional com Usuario atualizado
 	 * @author Turma34
-	 * @since 1.0
+	 * @since 1.5
 	 * 
 	 */
 	public Optional<Usuario> atualizarUsuario(Usuario usuarioParaAtualizar) {
 		return repositorio.findById(usuarioParaAtualizar.getIdUsuario()).map(resp -> {
 			resp.setNome(usuarioParaAtualizar.getNome());
-			resp.setSenha(usuarioParaAtualizar.getSenha());
+			resp.setSenha(encriptadorDeSenha(usuarioParaAtualizar.getSenha()));
 			return Optional.ofNullable(repositorio.save(resp));
 		}).orElseGet(() -> {
 			return Optional.empty();
 		});
+
+	}
+	
+	/**
+	 * Metodo estatico utilizado para gerar token formato Basic
+	 * 
+	 * <p> estrutura ex. gustavo@email.com:134652
+	 * <p> estruturaBase64 ex. cGFtZWxhQGVtYWlsLmNvbToxMzQ2NTI
+	 * <p> estruturaBasic = Basic cGFtZWxhQGVtYWlsLmNvbToxMzQ2NTI
+	 * 
+	 * @param email
+	 * @param senha
+	 * @return Token no formato Basic para autenticação
+	 * @since 1.0
+	 * @author Turma34
+	 * 
+	 */
+	private static String gerarToken(String email, String senha) {
+		String estrutura = email + ":" + senha;
+		byte[] estruturaBase64 = Base64.encodeBase64(estrutura.getBytes(Charset.forName("US-ASCII")));
+		return "Basic " + new String(estruturaBase64);
+
 	}
 
 	/**
@@ -69,9 +104,11 @@ public class UsuarioServicos {
 	 * 
 	 * @param usuarioParaAutenticar do tipo UsuarioLoginDTO necessario email e senha
 	 *                              para validar
-	 * @return ResponseEntity com CredenciaisDTO preenchido com informações mais o Token
+	 * @return ResponseEntity com CredenciaisDTO preenchido com informações mais o
+	 *         Token
 	 * @since 1.0
 	 * @author Turma34
+	 * 
 	 */
 	public ResponseEntity<CredenciaisDTO> pegarCredenciais(UsuarioLoginDTO usuarioParaAutenticar) {
 		return repositorio.findByEmail(usuarioParaAutenticar.getEmail()).map(resp -> {
@@ -79,17 +116,13 @@ public class UsuarioServicos {
 
 			if (encoder.matches(usuarioParaAutenticar.getSenha(), resp.getSenha())) {
 
-				String estruturaBasic = usuarioParaAutenticar.getEmail() + ":" + usuarioParaAutenticar.getSenha(); // gustavoboaz@gmail.com:134652
-				byte[] estruturaBase64 = Base64.encodeBase64(estruturaBasic.getBytes(Charset.forName("US-ASCII"))); // hHJyigo-o+i7%0ÍUG465sas=-
-				String tokenBasic = "Basic " + new String(estruturaBase64); // Basic hHJyigo-o+i7%0ÍUG465sas=-
-
 				CredenciaisDTO objetoCredenciaisDTO = new CredenciaisDTO();
-				
+
+				objetoCredenciaisDTO.setToken(gerarToken(usuarioParaAutenticar.getEmail(), usuarioParaAutenticar.getSenha()));
 				objetoCredenciaisDTO.setIdUsuario(resp.getIdUsuario());
 				objetoCredenciaisDTO.setNome(resp.getNome());
 				objetoCredenciaisDTO.setEmail(resp.getEmail());
 				objetoCredenciaisDTO.setSenha(resp.getSenha());
-				objetoCredenciaisDTO.setToken(tokenBasic);
 
 				return ResponseEntity.status(201).body(objetoCredenciaisDTO); // Usuario Credenciado
 			} else {
@@ -100,4 +133,5 @@ public class UsuarioServicos {
 		});
 
 	}
+
 }
